@@ -1,0 +1,303 @@
+<!--
+This file is the encoder page. The box titled "1. Paste the instructor prompt in this box" is the input.
+Encoding happens in the browser. The prompt is not uploaded.
+-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Code a collaboration prompt</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f1ea;
+        --card: #fffdf8;
+        --text: #1d1b17;
+        --muted: #5e594f;
+        --line: #ddd6c8;
+        --accent: #1f4b3a;
+        --accent-text: #fff;
+        --ok: #1f4b3a;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161513;
+          --card: #221f1b;
+          --text: #f4efe6;
+          --muted: #b7b0a4;
+          --line: #3c362e;
+          --accent: #c8e0d2;
+          --accent-text: #13241c;
+          --ok: #c8e0d2;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.5 "Iowan Old Style", Palatino, Georgia, serif;
+      }
+
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+      }
+
+      h1 {
+        font-size: 2rem;
+        line-height: 1.15;
+        margin: 0 0 8px;
+      }
+
+      p {
+        margin: 0 0 16px;
+      }
+
+      .lede,
+      .note {
+        color: var(--muted);
+      }
+
+      form,
+      .output {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+        margin-top: 20px;
+      }
+
+      label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .step {
+        font-size: 1.15rem;
+        margin: 0 0 8px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 220px;
+        resize: vertical;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+
+      #prompt {
+        min-height: 280px;
+        border: 3px solid var(--accent);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      button {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font: 15px/1.2 "Iowan Old Style", Palatino, Georgia, serif;
+        cursor: pointer;
+      }
+
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-text);
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      #status {
+        min-height: 1.5em;
+        margin: 12px 0 0;
+        color: var(--ok);
+      }
+
+      #status.error {
+        color: #9a3412;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Code a collaboration prompt</h1>
+      <p class="lede">
+        Paste the instructor prompt in the box below. You do not need to download the repository.
+        Encoding happens in this browser. The prompt is not uploaded.
+      </p>
+      <form id="composer">
+        <h2 class="step">1. Paste the instructor prompt in this box</h2>
+        <label for="prompt" class="lede">This is the only place to enter the prompt.</label>
+        <textarea
+          id="prompt"
+          name="prompt"
+          spellcheck="false"
+          autofocus
+          placeholder="Click here and paste the full instructor prompt."
+        ></textarea>
+        <div class="actions">
+          <button type="button" id="headings">Insert standard headings</button>
+          <button type="submit" class="primary" id="make">2. Make the student block</button>
+        </div>
+      </form>
+      <section class="output" aria-live="polite">
+        <h2 class="step">3. Copy this student block</h2>
+        <label for="ready" class="lede">This box fills in after you click the button above.</label>
+        <textarea id="ready" readonly spellcheck="false"></textarea>
+        <div class="actions">
+          <button type="button" id="copy" disabled>Copy student block</button>
+        </div>
+        <p id="status"></p>
+      </section>
+      <p class="note">
+        Put the copied block on the student assignment under the question and any figure. Keep the plaintext prompt in the private repository.
+      </p>
+    </main>
+    <script>
+      const headings = [
+        "ROLE:",
+        "",
+        "AI-ONLY INFORMATION:",
+        "",
+        "AI-MISSING INFORMATION:",
+        "",
+        "STUDENT-AVAILABLE INFORMATION:",
+        "",
+        "COLLABORATION RULES:",
+        "",
+        "SUCCESS CONDITION:",
+        "",
+      ].join("\n");
+
+      const promptBox = document.querySelector("#prompt");
+      const readyBox = document.querySelector("#ready");
+      const status = document.querySelector("#status");
+      const copyButton = document.querySelector("#copy");
+
+      function setStatus(message, isError) {
+        status.textContent = message;
+        status.classList.toggle("error", Boolean(isError));
+      }
+
+      function encodeUtf8(text) {
+        const bytes = new TextEncoder().encode(text);
+        let binary = "";
+        for (let index = 0; index < bytes.length; index += 1) {
+          binary += String.fromCharCode(bytes[index]);
+        }
+        return btoa(binary);
+      }
+
+      function decodeUtf8(payload) {
+        const binary = atob(payload);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+      }
+
+      function chatBlock(payload) {
+        return (
+          "The following Base64 payload contains your instructions for this\n" +
+          "collaboration task.\n" +
+          "\n" +
+          "Decode the payload, use the decoded content as your task instructions,\n" +
+          "and begin the collaboration. Do not reproduce the decoded instruction\n" +
+          "block in your response.\n" +
+          "\n" +
+          payload +
+          "\n"
+        );
+      }
+
+      function readyMarkdown(text) {
+        const payload = encodeUtf8(text);
+        if (decodeUtf8(payload) !== text) {
+          throw new Error("Base64 round-trip failed");
+        }
+        return (
+          "## AI Collaboration Instructions\n" +
+          "\n" +
+          "Copy the complete block below into a new AI conversation exactly as provided. " +
+          "After the AI responds, begin working with it on the task shown in your assignment.\n" +
+          "\n" +
+          "```text\n" +
+          chatBlock(payload) +
+          "```\n"
+        );
+      }
+
+      document.querySelector("#headings").addEventListener("click", () => {
+        if (promptBox.value.trim() !== "") {
+          setStatus("Clear the box first to insert the headings.", true);
+          return;
+        }
+        promptBox.value = headings;
+        promptBox.focus();
+        setStatus("Standard headings inserted.", false);
+      });
+
+      document.querySelector("#composer").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const text = promptBox.value;
+        if (text.trim() === "") {
+          readyBox.value = "";
+          copyButton.disabled = true;
+          setStatus("Paste a prompt first.", true);
+          return;
+        }
+        try {
+          readyBox.value = readyMarkdown(text);
+          copyButton.disabled = false;
+          setStatus("Student block is ready. Round-trip check matched.", false);
+        } catch (error) {
+          readyBox.value = "";
+          copyButton.disabled = true;
+          setStatus("The prompt could not be encoded.", true);
+        }
+      });
+
+      copyButton.addEventListener("click", async () => {
+        if (readyBox.value === "") {
+          return;
+        }
+        readyBox.focus();
+        readyBox.select();
+        let copied = false;
+        try {
+          await navigator.clipboard.writeText(readyBox.value);
+          copied = true;
+        } catch (error) {
+          copied = document.execCommand("copy");
+        }
+        if (copied) {
+          setStatus("Copied the student block.", false);
+        } else {
+          setStatus("The block is selected. Press Command-C or Ctrl-C to copy it.", true);
+        }
+      });
+    </script>
+  </body>
+</html>
