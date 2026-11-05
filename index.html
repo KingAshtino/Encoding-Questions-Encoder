@@ -8,9 +8,17 @@ Encoding happens in the browser. The prompt is not uploaded.
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Code a collaboration prompt</title>
+    <script>
+      try {
+        const savedTheme = localStorage.getItem("encoder-theme");
+        if (savedTheme === "light" || savedTheme === "dark") {
+          document.documentElement.setAttribute("data-theme", savedTheme);
+        }
+      } catch (error) {}
+    </script>
     <style>
       :root {
-        color-scheme: light dark;
+        color-scheme: light;
         --bg: #f4f1ea;
         --card: #fffdf8;
         --text: #1d1b17;
@@ -19,10 +27,25 @@ Encoding happens in the browser. The prompt is not uploaded.
         --accent: #1f4b3a;
         --accent-text: #fff;
         --ok: #1f4b3a;
+        --error: #9a3412;
+      }
+
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #161513;
+        --card: #221f1b;
+        --text: #f4efe6;
+        --muted: #b7b0a4;
+        --line: #3c362e;
+        --accent: #c8e0d2;
+        --accent-text: #13241c;
+        --ok: #c8e0d2;
+        --error: #f0b4a2;
       }
 
       @media (prefers-color-scheme: dark) {
-        :root {
+        :root:not([data-theme="light"]) {
+          color-scheme: dark;
           --bg: #161513;
           --card: #221f1b;
           --text: #f4efe6;
@@ -31,6 +54,7 @@ Encoding happens in the browser. The prompt is not uploaded.
           --accent: #c8e0d2;
           --accent-text: #13241c;
           --ok: #c8e0d2;
+          --error: #f0b4a2;
         }
       }
 
@@ -138,7 +162,30 @@ Encoding happens in the browser. The prompt is not uploaded.
       }
 
       #status.error {
-        color: #9a3412;
+        color: var(--error);
+      }
+
+      .mast {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .theme {
+        display: flex;
+        gap: 4px;
+      }
+
+      .theme button {
+        padding: 6px 10px;
+      }
+
+      .theme button[aria-pressed="true"] {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--accent-text);
       }
 
       .tabs {
@@ -210,7 +257,14 @@ Encoding happens in the browser. The prompt is not uploaded.
   </head>
   <body>
     <main>
-      <h1>Code a collaboration prompt</h1>
+      <div class="mast">
+        <h1>Code a collaboration prompt</h1>
+        <div class="theme" role="group" aria-label="Appearance">
+          <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
       <div class="tabs" role="tablist" aria-label="Page sections">
         <button type="button" role="tab" id="tab-encode" aria-controls="panel-encode" aria-selected="true">Encode</button>
         <button type="button" role="tab" id="tab-example" aria-controls="panel-example" aria-selected="false">Example</button>
@@ -458,6 +512,27 @@ Uk9MRToKWW91IGFyZSB0aGUgc3R1ZGVudCdzIEFJIGNvbGxhYm9yYXRvciBvbiBhIFBoeXNpY3MgSSB0
           setStatus("The block is selected. Press Command-C or Ctrl-C to copy it.", true);
         }
       });
+
+      const themeButtons = document.querySelectorAll("[data-theme-choice]");
+
+      function applyTheme(choice) {
+        if (choice === "light" || choice === "dark") {
+          document.documentElement.setAttribute("data-theme", choice);
+          localStorage.setItem("encoder-theme", choice);
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+          localStorage.removeItem("encoder-theme");
+          choice = "system";
+        }
+        themeButtons.forEach((button) => {
+          button.setAttribute("aria-pressed", String(button.dataset.themeChoice === choice));
+        });
+      }
+
+      themeButtons.forEach((button) => {
+        button.addEventListener("click", () => applyTheme(button.dataset.themeChoice));
+      });
+      applyTheme(document.documentElement.getAttribute("data-theme") || "system");
 
       document.querySelectorAll(".tabs button").forEach((button) => {
         button.addEventListener("click", () => {
