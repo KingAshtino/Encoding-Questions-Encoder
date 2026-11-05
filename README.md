@@ -7,3 +7,5 @@ https://kingashtino.github.io/Encoding-Questions-Encoder/
 This repository contains only the encoder page. Hidden instructor prompts stay in a separate private repository.
 
 The Example tab shows the skier and mogul part A block, and the reading GPT 6 High produced from it on October 25, 2026.
+
+Encoder instructions are placed above the encoded prompt. Turn on **Include interaction rules** to add the interaction rules to that block.
